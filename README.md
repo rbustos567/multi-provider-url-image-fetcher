@@ -60,3 +60,35 @@ Basic Command Syntax
 ```bash
 python3 fetch_photo_url.py -u <ENDPOINT_URL> -k <API_KEY> -q <QUERY> -o <ORIENTATION>
 ```
+## Examples
+1. Fetch from Unsplash (B&W Street Photography):
+```bash
+python3 fetch_photo_url.py \
+  -u "[https://api.unsplash.com/photos/random](https://api.unsplash.com/photos/random)" \
+  -k "YOUR_UNSPLASH_KEY" \
+  -q "street photography" \
+  -o landscape
+```
+2. Fetch from Pixabay (Grayscale Filtered):
+```bash
+python3 fetch_photo_url.py \
+  -u "[https://pixabay.com/api/](https://pixabay.com/api/)" \
+  -k "YOUR_PIXABAY_KEY" \
+  -q "architecture"
+```
+3. Fetch Classic Artwork (Art Institute of Chicago - No Key Required):
+```bash
+python3 fetch_photo_url.py \
+  -u "[https://api.artic.edu/api/v1/artworks/search](https://api.artic.edu/api/v1/artworks/search)" \
+  -q "Claude Monet"
+```
+## Integration with e-Paper Display Pipelines
+Capture the output URL directly into a shell variable or download stream:
+```bash
+# Capture clean URL string
+IMAGE_URL=$(./fetch_photo_url.py -q "minimalist nature")
+
+# Download directly and pass to e-Paper rendering engine
+curl -s "$IMAGE_URL" -o current_display.jpg
+python3 display_render.py current_display.jpg
+```
