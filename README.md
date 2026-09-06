@@ -19,3 +19,14 @@ Designed specifically for e-Paper / e-Ink displays (like Waveshare) and automati
    ```bash
    git clone https://github.com/rbustos567/multi-provider-url-image-fetcher.git
    cd multi-provider-url-image-fetcher
+---
+
+1. Install dependencies
+```bash
+pip install requests
+```
+2. (Optional) Configure environment variables:
+   Create a .env file in the root directory:
+```bash
+API_KEY=your_generic_api_key_here
+```
