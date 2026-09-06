@@ -1,0 +1,62 @@
+{
+  "unsplash": {
+    "domains": ["api.unsplash.com"],
+    "auth_type": "param",
+    "key_param": "client_id",
+    "query_param": "query",
+    "orientation_param": "orientation",
+    "extra_params": {
+      "color": "black_and_white"
+    },
+    "json_path": "urls.regular"
+  },
+  "pixabay": {
+    "domains": ["pixabay.com"],
+    "auth_type": "param",
+    "key_param": "key",
+    "query_param": "q",
+    "orientation_param": "orientation",
+    "orientation_map": {
+      "landscape": "horizontal",
+      "portrait": "vertical"
+    },
+    "extra_params": {
+      "image_type": "photo",
+      "colors": "grayscale",
+      "per_page": 20
+    },
+    "json_path": "hits.0.largeImageURL",
+    "randomize_list": "hits"
+  },
+  "pexels": {
+    "domains": ["api.pexels.com"],
+    "auth_type": "header",
+    "header_name": "Authorization",
+    "query_param": "query",
+    "orientation_param": "orientation",
+    "extra_params": {
+      "per_page": 15
+    },
+    "json_path": "photos.0.src.large",
+    "randomize_list": "photos"
+  },
+  "artic": {
+    "domains": ["artic.edu"],
+    "auth_type": "none",
+    "query_param": "q",
+    "extra_params": {
+      "fields": "id,title,image_id",
+      "limit": 15
+    },
+    "json_path": "data.0.image_id",
+    "randomize_list": "data",
+    "url_template": "https://www.artic.edu/iiif/2/{value}/full/800,/0/default.jpg"
+  },
+  "giphy": {
+    "domains": ["api.giphy.com"],
+    "auth_type": "param",
+    "key_param": "api_key",
+    "query_param": "tag",
+    "json_path": "data.images.downsized_still.url"
+  }
+}
