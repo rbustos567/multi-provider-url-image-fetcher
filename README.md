@@ -30,3 +30,33 @@ pip install requests
 ```bash
 API_KEY=your_generic_api_key_here
 ```
+## Configuration (providers.json)
+The script dynamically matches the target URL domain against providers.json to construct query parameters, set authorization headers, and parse response JSON paths.
+```bash
+{
+  "unsplash": {
+    "domains": ["api.unsplash.com"],
+    "auth_type": "param",
+    "key_param": "client_id",
+    "query_param": "query",
+    "orientation_param": "orientation",
+    "extra_params": { "color": "black_and_white" },
+    "json_path": "urls.regular"
+  },
+  "pexels": {
+    "domains": ["api.pexels.com"],
+    "auth_type": "header",
+    "header_name": "Authorization",
+    "query_param": "query",
+    "orientation_param": "orientation",
+    "extra_params": { "per_page": 15 },
+    "json_path": "photos.0.src.large",
+    "randomize_list": "photos"
+  }
+}
+```
+## Usage
+Basic Command Syntax
+```bash
+python3 fetch_photo_url.py -u <ENDPOINT_URL> -k <API_KEY> -q <QUERY> -o <ORIENTATION>
+```
