@@ -1,4 +1,4 @@
-# epaper-image-fetcher
+# multi-provider-url-image-fetcher
 
 A lightweight, provider-agnostic Python CLI tool that fetches raw image and artwork URLs from multiple public APIs (Unsplash, Pixabay, Pexels, Art Institute of Chicago, Giphy, and more). 
 
@@ -17,5 +17,5 @@ Designed specifically for e-Paper / e-Ink displays (like Waveshare) and automati
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/rbustos567/epaper-image-fetcher.git](https://github.com/your-username/epaper-image-fetcher.git)
-   cd epaper-image-fetcher
+   git clone [https://github.com/rbustos567/multi-provider-url-image-fetcher.git
+   cd multi-provider-url-image-fetcher
