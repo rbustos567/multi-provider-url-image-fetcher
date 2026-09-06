@@ -17,5 +17,5 @@ Designed specifically for e-Paper / e-Ink displays (like Waveshare) and automati
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/rbustos567/multi-provider-url-image-fetcher.git
+   git clone https://github.com/rbustos567/multi-provider-url-image-fetcher.git
    cd multi-provider-url-image-fetcher
