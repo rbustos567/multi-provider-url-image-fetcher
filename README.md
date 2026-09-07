@@ -61,20 +61,23 @@ Basic Command Syntax
 python3 fetch_photo_url.py -u <ENDPOINT_URL> -k <API_KEY> -q <QUERY> -o <ORIENTATION>
 ```
 ## Examples
-1. Fetch from Unsplash (B&W Street Photography):
+1. Fetch from Unsplash (B&W Street Photography) with DEBUG logging and output log:
 ```bash
 python3 fetch_photo_url.py \
   -u "https://api.unsplash.com/photos/random" \
   -k "YOUR_UNSPLASH_KEY" \
   -q "street photography" \
-  -o landscape
+  -o landscape \
+  --log-level DEBUG \
+  --log-file 20260907.log
 ```
-2. Fetch from Pixabay (Grayscale Filtered):
+2. Fetch from Pixabay (Grayscale Filtered) with WARNING logging:
 ```bash
 python3 fetch_photo_url.py \
   -u "https://pixabay.com/api/" \
   -k "YOUR_PIXABAY_KEY" \
-  -q "architecture"
+  -q "architecture" \
+  --log-level WARNING
 ```
 3. Fetch Classic Artwork (Art Institute of Chicago - No Key Required):
 ```bash
