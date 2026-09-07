@@ -79,7 +79,15 @@ python3 fetch_photo_url.py \
   -q "architecture" \
   --log-level WARNING
 ```
-3. Fetch Classic Artwork (Art Institute of Chicago - No Key Required):
+3. Fetch from Pexels (Grayscale Filtered) with WARNING logging:
+```bash
+python3 fetch_photo_url.py \
+  -u "https://api.pexels.com/v1/search" \
+  -k "YOUR_PEXELS_KEY" \
+  -q "architecture" \
+  --log-level WARNING
+```
+4. Fetch Classic Artwork (Art Institute of Chicago - No Key Required):
 ```bash
 python3 fetch_photo_url.py \
   -u "https://api.artic.edu/api/v1/artworks/search" \
