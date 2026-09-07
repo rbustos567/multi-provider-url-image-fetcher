@@ -3,7 +3,7 @@
 
 Fetches image URLs dynamically using a providers.json mapping configuration.
 Outputs strictly the final raw image URL string to stdout (when successful),
-while logging request details (params, headers, status) to stderr.
+while logging request details and system events based on the configured log level and output.
 """
 
 import argparse
@@ -16,18 +16,34 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 import requests
 
-# Logging strictly to stderr so stdout remains clean for piping
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stderr)],
-)
+
+def setup_logging(level_name: str, log_file: Optional[str] = None) -> None:
+    """Configures the root logger with specified log level and handler (file or stderr)."""
+    numeric_level = getattr(logging, level_name.upper(), logging.INFO)
+
+    handlers = []
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
+    else:
+        # Default to stderr to keep stdout clean for URL piping
+        handlers.append(logging.StreamHandler(sys.stderr))
+
+    # Reset any existing handlers
+    logging.root.handlers = []
+
+    logging.basicConfig(
+        level=numeric_level,
+        format="[%(asctime)s] [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
+    )
 
 
 def load_env_file(env_path: str = ".env") -> None:
     """Parse key=value pairs from .env if present."""
     path = Path(env_path)
     if path.is_file():
+        logging.debug("Loading environment variables from %s", env_path)
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -41,14 +57,20 @@ def load_env_file(env_path: str = ".env") -> None:
 def resolve_access_key(cli_key: Optional[str]) -> Optional[str]:
     """Resolves API Key: CLI arg > API_KEY env > UNSPLASH_ACCESS_KEY env > .env file."""
     if cli_key:
+        logging.debug("API key resolved from CLI argument.")
         return cli_key
 
     load_env_file()
-    return os.getenv("API_KEY") or os.getenv("UNSPLASH_ACCESS_KEY")
+    key = os.getenv("API_KEY") or os.getenv("UNSPLASH_ACCESS_KEY")
+    if key:
+        logging.debug("API key resolved from environment/file.")
+    else:
+        logging.warning("No API key could be resolved from environment or CLI.")
+    return key
 
 
 def mask_sensitive_value(value: str) -> str:
-    """Masks API Key or Token for safe logging to stderr."""
+    """Masks API Key or Token for safe logging."""
     if not value or len(value) <= 8:
         return "***MASKED***"
     return f"{value[:4]}...{value[-4:]}"
@@ -64,10 +86,12 @@ def get_nested_value(data: Any, path: str) -> Any:
                 idx = int(key)
                 curr = curr[idx]
             except (ValueError, IndexError):
+                logging.debug("Failed to index list using key '%s' in path '%s'", key, path)
                 return None
         elif isinstance(curr, dict):
             curr = curr.get(key)
             if curr is None:
+                logging.debug("Key '%s' not found in dictionary for path '%s'", key, path)
                 return None
         else:
             return None
@@ -78,13 +102,15 @@ def load_providers(config_path: str = "providers.json") -> Dict[str, Any]:
     """Loads provider mappings from JSON file."""
     path = Path(config_path)
     if not path.is_file():
-        logging.error("Configuration file '%s' not found.", config_path)
+        logging.warning("Configuration file '%s' not found.", config_path)
         sys.exit(1)
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            logging.debug("Successfully loaded configuration from '%s'", config_path)
+            return data
     except Exception as exc:
-        logging.error("Failed to parse config file '%s': %s", config_path, exc)
+        logging.warning("Failed to parse config file '%s': %s", config_path, exc)
         sys.exit(1)
 
 
@@ -93,7 +119,9 @@ def find_matching_provider(endpoint_url: str, providers: Dict[str, Any]) -> Opti
     for name, config in providers.items():
         for domain in config.get("domains", []):
             if domain in endpoint_url:
+                logging.debug("Matched endpoint URL '%s' to provider '%s'", endpoint_url, name)
                 return config
+    logging.warning("No provider mapping matched domain in URL '%s'", endpoint_url)
     return None
 
 
@@ -104,14 +132,12 @@ def fetch_generic_image_url(
     orientation: str = "landscape",
     config_path: str = "providers.json",
     timeout: int = 12,
-    verbose: bool = False,
 ) -> Optional[str]:
-    """Dynamically builds the request, logs params/headers, and extracts image URL."""
+    """Dynamically builds the request and extracts image URL using providers.json."""
     providers = load_providers(config_path)
     cfg = find_matching_provider(endpoint_url, providers)
 
     if not cfg:
-        logging.error("No matching provider configuration found for URL: %s", endpoint_url)
         return None
 
     headers: Dict[str, str] = {
@@ -119,10 +145,10 @@ def fetch_generic_image_url(
     }
     params: Dict[str, Any] = {}
 
-    # Handle Authentication
+    # Authentication
     auth_type = cfg.get("auth_type", "param")
     if auth_type != "none" and not api_key:
-        logging.error("API Key required for this endpoint.")
+        logging.warning("API Key is required for endpoint '%s' but was not provided.", endpoint_url)
         return None
 
     key_param_name = cfg.get("key_param")
@@ -133,7 +159,7 @@ def fetch_generic_image_url(
     elif auth_type == "header" and header_name:
         headers[header_name] = api_key
 
-    # Handle Query and Orientation
+    # Query & Orientation
     if cfg.get("query_param"):
         params[cfg["query_param"]] = query
 
@@ -143,28 +169,22 @@ def fetch_generic_image_url(
             ori_val = cfg["orientation_map"][orientation]
         params[cfg["orientation_param"]] = ori_val
 
-    # Add extra static params from config
+    # Static Extra Params
     if "extra_params" in cfg:
         params.update(cfg["extra_params"])
 
-    # -------------------------------------------------------------------------
-    # INSPECTION LOGS (PARAMS & HEADERS)
-    # -------------------------------------------------------------------------
-    if verbose or logging.getLogger().isEnabledFor(logging.INFO):
-        # Create masked copies for logging so secrets aren't exposed in plaintext
-        log_params = dict(params)
-        if auth_type == "param" and key_param_name and key_param_name in log_params:
-            log_params[key_param_name] = mask_sensitive_value(str(log_params[key_param_name]))
+    # Log Constructed Request Details
+    log_params = dict(params)
+    if auth_type == "param" and key_param_name and key_param_name in log_params:
+        log_params[key_param_name] = mask_sensitive_value(str(log_params[key_param_name]))
 
-        log_headers = dict(headers)
-        if auth_type == "header" and header_name and header_name in log_headers:
-            log_headers[header_name] = mask_sensitive_value(str(log_headers[header_name]))
+    log_headers = dict(headers)
+    if auth_type == "header" and header_name and header_name in log_headers:
+        log_headers[header_name] = mask_sensitive_value(str(log_headers[header_name]))
 
-        logging.info("--- HTTP Request Inspection ---")
-        logging.info("Target URL Endpoint : %s", endpoint_url)
-        logging.info("Constructed Params  :\n%s", json.dumps(log_params, ensure_ascii=False, indent=2))
-        logging.info("Constructed Headers :\n%s", json.dumps(log_headers, ensure_ascii=False, indent=2))
-        logging.info("-------------------------------")
+    logging.info("Preparing HTTP request for endpoint: %s", endpoint_url)
+    logging.debug("Constructed Params:\n%s", json.dumps(log_params, ensure_ascii=False, indent=2))
+    logging.debug("Constructed Headers:\n%s", json.dumps(log_headers, ensure_ascii=False, indent=2))
 
     try:
         resp = requests.get(endpoint_url, params=params, headers=headers, timeout=timeout)
@@ -172,13 +192,14 @@ def fetch_generic_image_url(
         resp.raise_for_status()
         data = resp.json()
 
-        # Handle Randomization if the response contains a list of items
+        # Handle Randomization
         random_key = cfg.get("randomize_list")
         if random_key and isinstance(data, dict) and random_key in data:
             items = data.get(random_key, [])
             if not items:
-                logging.error("Response contains an empty list for '%s'", random_key)
+                logging.warning("Response payload returned an empty list for key '%s'", random_key)
                 return None
+            logging.debug("Randomly selecting 1 item out of %d from list '%s'", len(items), random_key)
             data[random_key] = [random.choice(items)]
 
         # Extract value using dot-notation path
@@ -186,19 +207,21 @@ def fetch_generic_image_url(
         raw_val = get_nested_value(data, json_path)
 
         if not raw_val:
-            logging.error("Could not extract image URL using path '%s'", json_path)
+            logging.warning("Could not extract image URL string using JSON path '%s'", json_path)
             return None
 
-        # Handle URL formatting template (useful for APIs like Art Institute of Chicago)
+        # Handle URL formatting template
         if "url_template" in cfg:
-            return cfg["url_template"].format(value=raw_val)
+            raw_val = cfg["url_template"].format(value=raw_val)
 
-        return str(raw_val)
+        resolved_url = str(raw_val)
+        logging.info("Successfully fetched image URL: %s", resolved_url)
+        return resolved_url
 
     except requests.exceptions.RequestException as exc:
-        logging.error("HTTP request failed: %s", exc)
+        logging.warning("HTTP request failed: %s", exc)
     except ValueError:
-        logging.error("Response body is not valid JSON.")
+        logging.warning("Response body is not a valid JSON structure.")
 
     return None
 
@@ -238,8 +261,23 @@ def main() -> None:
         default="providers.json",
         help="Path to JSON configuration file (default: providers.json)",
     )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING"],
+        type=str.upper,
+        help="Set the logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--log-file",
+        help="Optional file path to store logs instead of writing to stderr",
+    )
 
     args = parser.parse_args()
+
+    # Configure logging level and output stream/file
+    setup_logging(level_name=args.log_level, log_file=args.log_file)
+
     api_key = resolve_access_key(args.key)
 
     image_url = fetch_generic_image_url(
