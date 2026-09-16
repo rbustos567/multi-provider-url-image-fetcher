@@ -2,6 +2,7 @@
 """Generic Multi-Provider Photo & Art URL Fetcher for e-Paper.
 
 Fetches image URLs dynamically using a providers.json mapping configuration.
+Supports target provider resolution via shorthand alias (e.g., 'pexels') or full URL.
 Outputs strictly the final raw image URL string to stdout (when successful),
 while logging request details and system events based on the configured log level and output.
 """
@@ -54,18 +55,18 @@ def load_env_file(env_path: str = ".env") -> None:
                     )
 
 
-def resolve_access_key(cli_key: Optional[str]) -> Optional[str]:
-    """Resolves API Key: CLI arg > API_KEY env > UNSPLASH_ACCESS_KEY env > .env file."""
-    if cli_key:
-        logging.debug("API key resolved from CLI argument.")
-        return cli_key
+def resolve_access_key(cfg: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """Resolves API Key: JSON api_key > API_KEY / UNSPLASH_ACCESS_KEY env / .env file."""
+    if cfg and cfg.get("api_key"):
+        logging.debug("API key resolved from provider JSON configuration.")
+        return cfg["api_key"]
 
     load_env_file()
     key = os.getenv("API_KEY") or os.getenv("UNSPLASH_ACCESS_KEY")
     if key:
-        logging.debug("API key resolved from environment/file.")
+        logging.debug("API key resolved from environment variables / .env file.")
     else:
-        logging.warning("No API key could be resolved from environment or CLI.")
+        logging.warning("No API key could be resolved from configuration or environment.")
     return key
 
 
@@ -114,20 +115,26 @@ def load_providers(config_path: str = "providers.json") -> Dict[str, Any]:
         sys.exit(1)
 
 
-def find_matching_provider(endpoint_url: str, providers: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Matches the target URL domain against configured providers."""
+def find_matching_provider(target: str, providers: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Matches provider by dictionary key first, then falls back to domain parsing."""
+    # Direct match by key name (e.g., 'pexels', 'unsplash')
+    if target in providers:
+        logging.debug("Matched provider target by key name: '%s'", target)
+        return providers[target]
+
+    # Domain-based fallback for full URLs passed via CLI
     for name, config in providers.items():
         for domain in config.get("domains", []):
-            if domain in endpoint_url:
-                logging.debug("Matched endpoint URL '%s' to provider '%s'", endpoint_url, name)
+            if domain in target:
+                logging.debug("Matched endpoint URL '%s' to provider '%s'", target, name)
                 return config
-    logging.warning("No provider mapping matched domain in URL '%s'", endpoint_url)
+
+    logging.warning("No provider mapping matched key or URL '%s'", target)
     return None
 
 
 def fetch_generic_image_url(
-    endpoint_url: str,
-    api_key: Optional[str],
+    target: str,
     query: str,
     orientation: str = "landscape",
     config_path: str = "providers.json",
@@ -135,10 +142,15 @@ def fetch_generic_image_url(
 ) -> Optional[str]:
     """Dynamically builds the request and extracts image URL using providers.json."""
     providers = load_providers(config_path)
-    cfg = find_matching_provider(endpoint_url, providers)
+    cfg = find_matching_provider(target, providers)
 
     if not cfg:
         return None
+
+    # Resolve target: use endpoint_url from config if target is an alias, else keep full URL
+    endpoint_url = cfg.get("endpoint_url", target) if not target.startswith("http") else target
+
+    resolved_key = resolve_access_key(cfg)
 
     headers: Dict[str, str] = {
         "User-Agent": "ePaperFetcher/2.0 (RaspberryPi/ESP32; Linux)"
@@ -147,7 +159,7 @@ def fetch_generic_image_url(
 
     # Authentication
     auth_type = cfg.get("auth_type", "param")
-    if auth_type != "none" and not api_key:
+    if auth_type != "none" and not resolved_key:
         logging.warning("API Key is required for endpoint '%s' but was not provided.", endpoint_url)
         return None
 
@@ -155,9 +167,9 @@ def fetch_generic_image_url(
     header_name = cfg.get("header_name")
 
     if auth_type == "param" and key_param_name:
-        params[key_param_name] = api_key
+        params[key_param_name] = resolved_key
     elif auth_type == "header" and header_name:
-        headers[header_name] = api_key
+        headers[header_name] = resolved_key
 
     # Query & Orientation
     if cfg.get("query_param"):
@@ -234,13 +246,8 @@ def main() -> None:
     parser.add_argument(
         "-u",
         "--url",
-        default="https://api.unsplash.com/photos/random",
-        help="API Endpoint URL (Unsplash, Pixabay, Pexels, Giphy, ArtIC, etc.)",
-    )
-    parser.add_argument(
-        "-k",
-        "--key",
-        help="API Key/Access Token (Optional for public APIs like ArtIC)",
+        default="unsplash",
+        help="Provider key from providers.json (e.g. 'pexels', 'artic') or full API Endpoint URL",
     )
     parser.add_argument(
         "-q",
@@ -275,14 +282,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Configure logging level and output stream/file
     setup_logging(level_name=args.log_level, log_file=args.log_file)
 
-    api_key = resolve_access_key(args.key)
-
     image_url = fetch_generic_image_url(
-        endpoint_url=args.url,
-        api_key=api_key,
+        target=args.url,
         query=args.query,
         orientation=args.orientation,
         config_path=args.config,
