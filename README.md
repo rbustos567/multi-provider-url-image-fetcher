@@ -25,81 +25,60 @@ Designed specifically for e-Paper / e-Ink displays (like Waveshare) and automati
 ```bash
 pip install requests
 ```
-2. (Optional) Configure environment variables:
-   Create a .env file in the root directory:
-```bash
-API_KEY=your_generic_api_key_here
-```
-## Configuration (providers.json)
-The script dynamically matches the target URL domain against providers.json to construct query parameters, set authorization headers, and parse response JSON paths.
+2. Configure API Keys (providers.json)
+All API configurations and access credentials are managed directly inside the providers.json file. Open providers.json with your preferred text editor and add your API keys to the "api_key" field for the providers that require authorization:
 ```bash
 {
   "unsplash": {
-    "domains": ["api.unsplash.com"],
+    "endpoint_url": "[https://api.unsplash.com/photos/random](https://api.unsplash.com/photos/random)",
     "auth_type": "param",
     "key_param": "client_id",
-    "query_param": "query",
-    "orientation_param": "orientation",
-    "extra_params": { "color": "black_and_white" },
-    "json_path": "urls.regular"
+    "api_key": "YOUR_UNSPLASH_ACCESS_KEY",
+    ...
   },
   "pexels": {
-    "domains": ["api.pexels.com"],
+    "endpoint_url": "[https://api.pexels.com/v1/search](https://api.pexels.com/v1/search)",
     "auth_type": "header",
     "header_name": "Authorization",
-    "query_param": "query",
-    "orientation_param": "orientation",
-    "extra_params": { "per_page": 15 },
-    "json_path": "photos.0.src.large",
-    "randomize_list": "photos"
+    "api_key": "YOUR_PEXELS_API_KEY",
+    ...
   }
 }
 ```
 ## Usage
 Basic Command Syntax
 ```bash
-python3 fetch_photo_url.py -u <ENDPOINT_URL> -k <API_KEY> -q <QUERY> -o <ORIENTATION>
+python3 fetch_photo_url.py -u <ENDPOINT_URL> -q <QUERY> -o <ORIENTATION>
 ```
 ## Examples
-1. Fetch from Unsplash (B&W Street Photography) with DEBUG logging and output log:
+1. Query a random street photograph from Unsplash with log level DEBUG and log file:
 ```bash
 python3 fetch_photo_url.py \
-  -u "https://api.unsplash.com/photos/random" \
-  -k "YOUR_UNSPLASH_KEY" \
+  -u unsplash \
   -q "street photography" \
   -o landscape \
   --log-level DEBUG \
   --log-file 20260907.log
 ```
-2. Fetch from Pixabay (Grayscale Filtered) with WARNING logging:
+2. Obtain a random architecture photograh from Pixabay (Grayscale Filtered) with WARNING logging:
 ```bash
 python3 fetch_photo_url.py \
-  -u "https://pixabay.com/api/" \
-  -k "YOUR_PIXABAY_KEY" \
+  -u pexels \
   -q "architecture" \
   --log-level WARNING
 ```
-3. Fetch from Pexels (Grayscale Filtered) with WARNING logging:
+3. Obtain a random impressionism artwork from Pexels (Grayscale Filtered) with WARNING logging:
 ```bash
 python3 fetch_photo_url.py \
-  -u "https://api.pexels.com/v1/search" \
-  -k "YOUR_PEXELS_KEY" \
-  -q "architecture" \
+  -u artic \
+  -q "impressionism" \
   --log-level WARNING
 ```
-4. Fetch Classic Artwork (Art Institute of Chicago - No Key Required):
+## Piping and Script Integration
+Fetch the URL and download the image directly to disk
 ```bash
-python3 fetch_photo_url.py \
-  -u "https://api.artic.edu/api/v1/artworks/search" \
-  -q "Claude Monet"
+IMAGE_URL=$(python3 fetch_photo_url.py -u unsplash -q "monochrome")
+curl -s "$IMAGE_URL" -o output.jpg
 ```
-## Integration with e-Paper Display Pipelines
-Capture the output URL directly into a shell variable or download stream:
-```bash
-# Capture clean URL string
-IMAGE_URL=$(./fetch_photo_url.py -q "minimalist nature")
 
-# Download directly and pass to e-Paper rendering engine
-curl -s "$IMAGE_URL" -o current_display.jpg
-python3 display_render.py current_display.jpg
-```
+
