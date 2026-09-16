@@ -1,8 +1,10 @@
 {
   "unsplash": {
+    "endpoint_url": "https://api.unsplash.com/photos/random",
     "domains": ["api.unsplash.com"],
     "auth_type": "param",
     "key_param": "client_id",
+    "api_key": "",
     "query_param": "query",
     "orientation_param": "orientation",
     "extra_params": {
@@ -11,9 +13,11 @@
     "json_path": "urls.regular"
   },
   "pixabay": {
+    "endpoint_url": "https://pixabay.com/api/",
     "domains": ["pixabay.com"],
     "auth_type": "param",
     "key_param": "key",
+    "api_key": "",
     "query_param": "q",
     "orientation_param": "orientation",
     "orientation_map": {
@@ -29,9 +33,11 @@
     "randomize_list": "hits"
   },
   "pexels": {
+    "endpoint_url": "https://api.pexels.com/v1/search",
     "domains": ["api.pexels.com"],
     "auth_type": "header",
     "header_name": "Authorization",
+    "api_key": "",
     "query_param": "query",
     "orientation_param": "orientation",
     "extra_params": {
@@ -41,6 +47,7 @@
     "randomize_list": "photos"
   },
   "artic": {
+    "endpoint_url": "https://api.artic.edu/api/v1/artworks/search",
     "domains": ["artic.edu"],
     "auth_type": "none",
     "query_param": "q",
@@ -53,9 +60,11 @@
     "url_template": "https://www.artic.edu/iiif/2/{value}/full/800,/0/default.jpg"
   },
   "giphy": {
+    "endpoint_url": "https://api.giphy.com/v1/gifs/random",
     "domains": ["api.giphy.com"],
     "auth_type": "param",
     "key_param": "api_key",
+    "api_key": "",
     "query_param": "tag",
     "json_path": "data.images.downsized_still.url"
   }
