@@ -21,11 +21,7 @@ Designed specifically for e-Paper / e-Ink displays (like Waveshare) and automati
    cd multi-provider-url-image-fetcher
 ---
 
-1. Install dependencies
-```bash
-pip install requests
-```
-2. Configure API Keys (providers.json)
+1. Configure API Keys (providers.json)
 All API configurations and access credentials are managed directly inside the providers.json file. Open providers.json with your preferred text editor and add your API keys to the "api_key" field for the providers that require authorization:
 ```bash
 {
